@@ -154,7 +154,10 @@ def spooky_get_predictions_from_csv():
     predict_estimator = spooky_get_estimator()
     print('finished getting estimator')
     # probabilities = predict_estimator.predict_proba(vectors)
-    print(vectors)
+    # print(vectors)
+    # with open('sampleout.txt','w') as outfile:
+    #     for item in vectors:
+    #         outfile.write(str(item.tostring()))
     probabilities = predict_estimator.predict(vectors)
     return probabilities
 
