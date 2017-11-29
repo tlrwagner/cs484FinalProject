@@ -7,11 +7,13 @@ import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
-# from sklearn.linear_model import
+import numpy as np
+from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, Lasso
 
 stop_words = stopwords.words('english')
 lemmtizer = WordNetLemmatizer()
 tokenizer = RegexpTokenizer('[A-Za-z]\w+')
+num_features = 500
 
 class Artist:
     def __init__(self, name):
@@ -109,6 +111,7 @@ def get_stemmed_tokens_from_csv(infile):
     nonstop_count = 0
     data = []
     for sentence in train.text.values:
+        # print(sentence)
         sentence_tokens = []
         for word in tokenizer.tokenize(sentence):
             total_word_count += 1
@@ -121,11 +124,68 @@ def get_stemmed_tokens_from_csv(infile):
     # print(data)
     return data
 
+def get_feature_vector(tokens, num_features, w2v_model):
+    feature_vector = np.zeros(shape=(1, num_features), dtype='float32')
+    missed = 0
+    for word in tokens:
+        try:
+            featureVector = np.add(featureVector, w2v_model[word])
+        except:
+            missed += 1
+            pass
+    if len(tokens) - missed == 0:
+        return np.zeros(shape=(num_features), dtype='float32')
+    return np.divide(featureVector, len(tokens) - missed).squeeze()
+
+def get_vectors(in_data, in_model):
+    result_vectors = []
+    for token_sentence in in_data:
+        ftr_vector = get_feature_vector(token_sentence, num_features, in_model)
+        result_vectors.append(ftr_vector)
+    return result_vectors
 
 
+def spooky_get_predictions_from_csv():
+    in_file = 'test.csv'
+    data = get_stemmed_tokens_from_csv(in_file)
+    model = Word2Vec(data, size=num_features)
+    vectors = get_vectors(data, model)
+    print('finished getting vectors for test data')
+    predict_estimator = spooky_get_estimator()
+    print('finished getting estimator')
+    # probabilities = predict_estimator.predict_proba(vectors)
+    print(vectors)
+    probabilities = predict_estimator.predict(vectors)
+    return probabilities
 
 
-data = get_stemmed_tokens_from_csv('spooky_train.csv')
+def spooky_get_estimator():
+    train = pd.read_csv('spooky_train.csv')
+    data = get_stemmed_tokens_from_csv('spooky_train.csv')
+    model = Word2Vec(data, size=num_features)
+    vectors = get_vectors(data, model)
 
-model = Word2Vec(data)
-print(model.most_similar('great'))
+    train['author'] = train['author'].map({'EAP': 0, 'HPL': 1, 'MWS': 2})
+
+    # estimator = LogisticRegression(C=1)
+    # estimator = LinearRegression()
+    estimator = Lasso()
+    estimator.fit(np.array(vectors), train.author.values)
+    return estimator
+
+probs = spooky_get_predictions_from_csv()
+
+# print(probs)
+# author = pd.DataFrame(probs)
+#
+# test = pd.read_csv('test.csv')
+#
+# final = pd.DataFrame()
+# final['id'] = test.id
+# final['EAP'] = author[0]
+# final['HPL'] = author[1]
+# final['MWS'] = author[2]
+# final.to_csv('submission.csv', sep=',',index=False)
+
+
+# print(model.most_similar('great'))
