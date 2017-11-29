@@ -153,12 +153,8 @@ def spooky_get_predictions_from_csv():
     print('finished getting vectors for test data')
     predict_estimator = spooky_get_estimator()
     print('finished getting estimator')
-    # probabilities = predict_estimator.predict_proba(vectors)
-    # print(vectors)
-    # with open('sampleout.txt','w') as outfile:
-    #     for item in vectors:
-    #         outfile.write(str(item.tostring()))
-    probabilities = predict_estimator.predict(vectors)
+    probabilities = predict_estimator.predict_proba(vectors)
+    # probabilities = predict_estimator.predict(vectors)
     return probabilities
 
 
@@ -170,25 +166,25 @@ def spooky_get_estimator():
 
     train['author'] = train['author'].map({'EAP': 0, 'HPL': 1, 'MWS': 2})
 
-    # estimator = LogisticRegression(C=1)
+    estimator = LogisticRegression(C=1)
     # estimator = LinearRegression()
-    estimator = Lasso()
+    # estimator = Lasso()
     estimator.fit(np.array(vectors), train.author.values)
     return estimator
 
 probs = spooky_get_predictions_from_csv()
 
 # print(probs)
-# author = pd.DataFrame(probs)
+author = pd.DataFrame(probs)
 #
-# test = pd.read_csv('test.csv')
+test = pd.read_csv('test.csv')
 #
-# final = pd.DataFrame()
-# final['id'] = test.id
-# final['EAP'] = author[0]
-# final['HPL'] = author[1]
-# final['MWS'] = author[2]
-# final.to_csv('submission.csv', sep=',',index=False)
+final = pd.DataFrame()
+final['id'] = test.id
+final['EAP'] = author[0]
+final['HPL'] = author[1]
+final['MWS'] = author[2]
+final.to_csv('submission.csv', sep=',',index=False)
 
 
 # print(model.most_similar('great'))
