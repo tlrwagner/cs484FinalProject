@@ -1,7 +1,3 @@
-# TODO implement tf-idf
-
-
-
 import csv
 import requests
 # import poetrytools
@@ -288,19 +284,31 @@ def spooky_get_estimator_tfidf_test():
         # vectors = get_vectors(data, model)
         nb_model = MultinomialNB()
         svc_model = LinearSVC()
+        # nb_model = BernoulliNB()
+        # svc_model = NuSVC()
+        # nb_model = GaussianNB()
+        # svc_model = SVC()
+
+
         # print(len(ytrain))
         # print(len(ytest))
-        nb_model.fit(vector_train, ytrain)
+        nb_model.fit(vector_train.toarray(), ytrain)
         svc_model.fit(vector_train, ytrain)
         # nb_result = nb_model.predict(vector_test)
         # svc_result = svc_model.predict(vector_test)
-        nb_result = nb_model.predict(vector_test)
+        nb_result = nb_model.predict(vector_test.toarray())
         svc_result = svc_model.predict(vector_test)
 
-        nb_score = metrics.accuracy_score(ytest, nb_result)
-        svc_score = metrics.accuracy_score(ytest, svc_result)
-        nb_f1 = metrics.f1_score(ytest, nb_result, average='weighted')
-        svc_f1 = metrics.f1_score(ytest, svc_result, average='weighted')
+        nb_score = metrics.precision_score(ytest, nb_result, average='weighted')
+        svc_score = metrics.precision_score(ytest, svc_result, average='weighted')
+        nb_f1 = metrics.recall_score(ytest, nb_result, average='weighted')
+        svc_f1 = metrics.recall_score(ytest, svc_result, average='weighted')
+
+        # nb_score = metrics.accuracy_score(ytest, nb_result)
+        # svc_score = metrics.accuracy_score(ytest, svc_result)
+        # nb_f1 = metrics.f1_score(ytest, nb_result, average='weighted')
+        # svc_f1 = metrics.f1_score(ytest, svc_result, average='weighted')
+
         # nb_logloss = metrics.log_loss(ytest, nb_result, normalize=True)
         # svc_logloss = metrics.log_loss(ytest, svc_result)
         nb_f1_sum += nb_f1
@@ -351,7 +359,7 @@ def spooky_get_predictions_from_csv_tfidf():
 
 # spooky_output_word2vec()
 
-# spooky_get_estimator_tfidf_test()
+spooky_get_estimator_tfidf_test()
 # get_stats()
 
 # print(model.most_similar('great'))
