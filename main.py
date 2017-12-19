@@ -17,10 +17,14 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn import metrics
 from sklearn.model_selection import KFold
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB, GaussianNB
+from sklearn.svm import LinearSVC, NuSVC, SVC
 from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, Lasso
-import seaborn
+from sklearn.tree import DecisionTreeClassifier
+import string
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 stop_words = stopwords.words('english')
 lemmtizer = WordNetLemmatizer()
@@ -214,8 +218,6 @@ def spooky_output_word2vec():
     final['MWS'] = author[2]
     final.to_csv('submission.csv', sep=',', index=False)
 
-def spooky_output_tfidf():
-    return
 
 def spooky_get_estimator_tfidf():
     train = pd.read_csv('spooky_train.csv')
@@ -243,6 +245,21 @@ def spooky_get_estimator_tfidf():
     # estimator.fit(np.array(vectors), train.author.values)
     # return estimator
     return
+
+def get_stats():
+    train = pd.read_csv('spooky_train.csv')
+    train['num_words'] = train['text'].apply(lambda x: len(str(x).split()))
+    train['num_char'] = train['text'].apply(lambda x: len(x))
+    train['punctuation'] = train['text'].apply(lambda x: len([char for char in str(x) if char in string.punctuation]))
+    # author_num_words = {'EAP':[], 'MWS':[], 'HPL':[]}
+    # for i in range(len(train['text'])):
+    #     author_num_words[train['author'][i]].append(len(train['text'][i]))
+    # print(author_num_words)
+    # data = seaborn.load_dataset(train)
+    # print(train.head())
+    sns.violinplot(x='author', y='punctuation', data=train)
+    plt.ylim(0,20)
+    plt.show()
 
 def spooky_get_estimator_tfidf_test():
     train = pd.read_csv('spooky_train.csv')
@@ -293,8 +310,8 @@ def spooky_get_estimator_tfidf_test():
         # nb_logloss_sum += nb_logloss
         # svc_logloss_sum += svc_logloss
 
-        print("Naive Bayes:     " + str(nb_score))
-        print("SVC:             " + str(svc_score))
+        # print("Naive Bayes:     " + str(nb_score))
+        # print("SVC:             " + str(svc_score))
     nb_accuracy_sum /= k
     svc_accuracy_sum /= k
     nb_f1_sum /= k
@@ -305,8 +322,8 @@ def spooky_get_estimator_tfidf_test():
     print("SVC avg accuracy:        " + str(svc_accuracy_sum))
     print("NB avg f1:               " + str(nb_f1_sum))
     print("SVC avg f1:              " + str(svc_f1_sum))
-    print("NB avg log-loss:         " + str(nb_logloss_sum))
-    print("SVC avg log-loss:        " + str(svc_logloss_sum))
+    # print("NB avg log-loss:         " + str(nb_logloss_sum))
+    # print("SVC avg log-loss:        " + str(svc_logloss_sum))
 
 
 
@@ -334,7 +351,7 @@ def spooky_get_predictions_from_csv_tfidf():
 
 # spooky_output_word2vec()
 
-spooky_get_estimator_tfidf_test()
-
+# spooky_get_estimator_tfidf_test()
+# get_stats()
 
 # print(model.most_similar('great'))
