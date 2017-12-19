@@ -1,3 +1,7 @@
+# TODO implement tf-idf
+
+
+
 import csv
 import requests
 # import poetrytools
@@ -5,15 +9,24 @@ from gensim.models import Word2Vec
 # import word2vec
 import pandas as pd
 from nltk.stem.wordnet import WordNetLemmatizer
+from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
+from nltk import pos_tag
 import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn import metrics
+from sklearn.model_selection import KFold
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression, LinearRegression, BayesianRidge, Lasso
+import seaborn
 
 stop_words = stopwords.words('english')
 lemmtizer = WordNetLemmatizer()
+port_stemmer = PorterStemmer()
 tokenizer = RegexpTokenizer('[A-Za-z]\w+')
-num_features = 500
+num_features = 150
 
 class Artist:
     def __init__(self, name):
@@ -115,6 +128,7 @@ def get_stemmed_tokens_from_csv(infile):
         sentence_tokens = []
         for word in tokenizer.tokenize(sentence):
             total_word_count += 1
+            word = port_stemmer.stem(word)
             if word.lower() not in stop_words:
                 nonstop_count += 1
                 sentence_tokens.append(word.lower())
@@ -125,17 +139,29 @@ def get_stemmed_tokens_from_csv(infile):
     return data
 
 def get_feature_vector(tokens, num_features, w2v_model):
-    feature_vector = np.zeros(shape=(1, num_features), dtype='float32')
+    featureVec = np.zeros(shape=(1, num_features), dtype='float32')
     missed = 0
+    success = 0
     for word in tokens:
+        # print(word)
+        # featureVec = np.add(featureVec, w2v_model.wv[word])
+
+
         try:
-            featureVector = np.add(featureVector, w2v_model[word])
+            # print(w2v_model[word])
+            # print("word: " + word)term
+            featureVec = featureVec + w2v_model[word]
+            print("word: " + word)
+            # featureVector = np.add(featureVector, w2v_model[word])
+            # print(featureVec)
+            success += 1
         except:
             missed += 1
             pass
+    print('success: %d missed: %d' % (success, missed))
     if len(tokens) - missed == 0:
         return np.zeros(shape=(num_features), dtype='float32')
-    return np.divide(featureVector, len(tokens) - missed).squeeze()
+    return (featureVec / len(tokens) - missed).squeeze()
 
 def get_vectors(in_data, in_model):
     result_vectors = []
@@ -145,23 +171,24 @@ def get_vectors(in_data, in_model):
     return result_vectors
 
 
-def spooky_get_predictions_from_csv():
+def spooky_get_predictions_from_csv_w2v():
     in_file = 'test.csv'
     data = get_stemmed_tokens_from_csv(in_file)
     model = Word2Vec(data, size=num_features)
     vectors = get_vectors(data, model)
     print('finished getting vectors for test data')
-    predict_estimator = spooky_get_estimator()
+    predict_estimator = spooky_get_estimator_w2v()
     print('finished getting estimator')
     probabilities = predict_estimator.predict_proba(vectors)
     # probabilities = predict_estimator.predict(vectors)
     return probabilities
 
 
-def spooky_get_estimator():
+
+def spooky_get_estimator_w2v():
     train = pd.read_csv('spooky_train.csv')
     data = get_stemmed_tokens_from_csv('spooky_train.csv')
-    model = Word2Vec(data, size=num_features)
+    model = Word2Vec(data, size=num_features, min_count=3, window=5, sg=1, alpha=1e-4, workers=4)
     vectors = get_vectors(data, model)
 
     train['author'] = train['author'].map({'EAP': 0, 'HPL': 1, 'MWS': 2})
@@ -172,19 +199,142 @@ def spooky_get_estimator():
     estimator.fit(np.array(vectors), train.author.values)
     return estimator
 
-probs = spooky_get_predictions_from_csv()
 
-# print(probs)
-author = pd.DataFrame(probs)
-#
-test = pd.read_csv('test.csv')
-#
-final = pd.DataFrame()
-final['id'] = test.id
-final['EAP'] = author[0]
-final['HPL'] = author[1]
-final['MWS'] = author[2]
-final.to_csv('submission.csv', sep=',',index=False)
+def spooky_output_word2vec():
+    probs = spooky_get_predictions_from_csv_w2v()
+
+    author = pd.DataFrame(probs)
+    #
+    test = pd.read_csv('test.csv')
+    #
+    final = pd.DataFrame()
+    final['id'] = test.id
+    final['EAP'] = author[0]
+    final['HPL'] = author[1]
+    final['MWS'] = author[2]
+    final.to_csv('submission.csv', sep=',', index=False)
+
+def spooky_output_tfidf():
+    return
+
+def spooky_get_estimator_tfidf():
+    train = pd.read_csv('spooky_train.csv')
+    data = get_stemmed_tokens_from_csv('spooky_train.csv')
+    data2 = []
+    for i in range(len(data)):
+        data2.append(" ".join(data[i]))
+    vectorizer = TfidfVectorizer(ngram_range=(1,2))
+    vector_train = vectorizer.fit_transform(data2)
+    # vectors = get_vectors(data, model)
+    nb_model = MultinomialNB()
+    svc_model = LinearSVC()
+
+    nb_model.fit(vector_train, train['author'])
+
+
+    # print(train['author'])
+
+    # train['author'] = train['author'].map({'EAP': 0, 'HPL': 1, 'MWS': 2})
+
+
+    # estimator = LogisticRegression(C=1)
+    # estimator = LinearRegression()
+    # estimator = Lasso()
+    # estimator.fit(np.array(vectors), train.author.values)
+    # return estimator
+    return
+
+def spooky_get_estimator_tfidf_test():
+    train = pd.read_csv('spooky_train.csv')
+    data = get_stemmed_tokens_from_csv('spooky_train.csv')
+    data2 = []
+    for i in range(len(data)):
+        data2.append(" ".join(data[i]))
+    k = 5
+    kf = KFold(n_splits=k)
+    nb_accuracy_sum = 0
+    svc_accuracy_sum = 0
+    nb_f1_sum = 0
+    svc_f1_sum = 0
+    # nb_logloss_sum = 0
+    # svc_logloss_sum = 0
+    for testing, training in kf.split(data2):
+        train_data = np.array(data2)[training]
+        test_data = np.array(data2)[testing]
+        train_data = train_data.tolist()
+        test_data = test_data.tolist()
+        vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+        # print(train_data)
+        vector_train = vectorizer.fit_transform(train_data)
+        vector_test = vectorizer.transform(test_data)
+        ytrain, ytest = train['author'][training], train['author'][testing]
+        # vectors = get_vectors(data, model)
+        nb_model = MultinomialNB()
+        svc_model = LinearSVC()
+        # print(len(ytrain))
+        # print(len(ytest))
+        nb_model.fit(vector_train, ytrain)
+        svc_model.fit(vector_train, ytrain)
+        # nb_result = nb_model.predict(vector_test)
+        # svc_result = svc_model.predict(vector_test)
+        nb_result = nb_model.predict(vector_test)
+        svc_result = svc_model.predict(vector_test)
+
+        nb_score = metrics.accuracy_score(ytest, nb_result)
+        svc_score = metrics.accuracy_score(ytest, svc_result)
+        nb_f1 = metrics.f1_score(ytest, nb_result, average='weighted')
+        svc_f1 = metrics.f1_score(ytest, svc_result, average='weighted')
+        # nb_logloss = metrics.log_loss(ytest, nb_result, normalize=True)
+        # svc_logloss = metrics.log_loss(ytest, svc_result)
+        nb_f1_sum += nb_f1
+        svc_f1_sum += svc_f1
+        nb_accuracy_sum += nb_score
+        svc_accuracy_sum += svc_score
+        # nb_logloss_sum += nb_logloss
+        # svc_logloss_sum += svc_logloss
+
+        print("Naive Bayes:     " + str(nb_score))
+        print("SVC:             " + str(svc_score))
+    nb_accuracy_sum /= k
+    svc_accuracy_sum /= k
+    nb_f1_sum /= k
+    svc_f1_sum/= k
+    # nb_logloss_sum /= k
+    # svc_logloss_sum /= k
+    print("NB avg accuracy:         " + str(nb_accuracy_sum))
+    print("SVC avg accuracy:        " + str(svc_accuracy_sum))
+    print("NB avg f1:               " + str(nb_f1_sum))
+    print("SVC avg f1:              " + str(svc_f1_sum))
+    print("NB avg log-loss:         " + str(nb_logloss_sum))
+    print("SVC avg log-loss:        " + str(svc_logloss_sum))
+
+
+
+
+    # nb_model.fit(vector_train, train['author'])
+
+def spooky_get_predictions_from_csv_tfidf():
+    in_file = 'test.csv'
+    data = get_stemmed_tokens_from_csv(in_file)
+    model = Word2Vec(data, size=num_features)
+    vectors = get_vectors(data, model)
+    print('finished getting vectors for test data')
+    predict_estimator = spooky_get_estimator_w2v()
+    print('finished getting estimator')
+    probabilities = predict_estimator.predict_proba(vectors)
+    # probabilities = predict_estimator.predict(vectors)
+    return probabilities
+
+# train = pd.read_csv('spooky_train.csv')
+# data = get_stemmed_tokens_from_csv('spooky_train.csv')
+# model = Word2Vec(data, size=num_features)
+# print(model.most_similar('raven'))
+# print(len(model.wv.vocab))
+
+
+# spooky_output_word2vec()
+
+spooky_get_estimator_tfidf_test()
 
 
 # print(model.most_similar('great'))
